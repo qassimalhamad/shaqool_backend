@@ -3,6 +3,7 @@ from flask import Flask
 
 # Imports from routes and middleware
 from routes.auth import auth_routes
+from routes.users import users_routes
 from middleware.verifyToken import verify_token
 
 # Initialize the Flask app
@@ -13,6 +14,7 @@ app.before_request(verify_token)
 
 # Register the blueprints
 app.register_blueprint(auth_routes)
+app.register_blueprint(users_routes)
 
 
 # run the server
