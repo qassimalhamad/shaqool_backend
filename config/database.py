@@ -55,6 +55,12 @@ class Service(Base):
     provider = relationship('User', back_populates='services')
     bookings = relationship('Booking', back_populates='service')
 
+class BookingEnum(enum.Enum):
+    pending = 'pending'
+    confirmed = 'confirmed'
+    completed = 'completed'
+    canceled = 'canceled'
+
 class Booking(Base):
     __tablename__ = 'bookings'
 
@@ -62,7 +68,7 @@ class Booking(Base):
     service_id = Column(Integer, ForeignKey('services.id'))
     customer_id = Column(Integer, ForeignKey('users.id'))
     booking_date = Column(TIMESTAMP, nullable=False)
-    status = Column(Enum('pending', 'confirmed', 'completed', 'canceled'), default='pending')
+    status = Column(Enum(BookingEnum), default=BookingEnum.pending)
 
     # Relationships
     service = relationship('Service', back_populates='bookings')
