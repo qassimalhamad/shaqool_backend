@@ -11,7 +11,14 @@ def get_user(user_id):
     try:
         user = session.query(User).filter(User.id == user_id).first()
         if user:
-            return jsonify({'id': user.id, 'username': user.username, 'email': user.email}), 200
+            return jsonify({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'phone': user.phone,
+                'address': user.address,
+                'user_type': user.user_type
+            }), 200
         return jsonify({'error': 'User not found'}), 404
     
     except Exception as e:
@@ -19,6 +26,7 @@ def get_user(user_id):
     
     finally:
         session.close()
+
 
 # Update a user
 @users_routes.route('/users/<int:user_id>', methods=['PUT'])
@@ -32,9 +40,11 @@ def update_user(user_id):
         user_data = request.get_json()
         username = user_data.get('username')
         email = user_data.get('email')
+        phone = user_data.get('phone')
+        address = user_data.get('address')
 
-        if not all([username, email]):
-            return jsonify({'error': 'Incomplete data. All fields are required'}), 400
+        if not all([username, email, phone, address]):
+            return jsonify({'error': 'Incomplete data. All fields are required.'}), 400
         
         existing_user_email = session.query(User).filter(User.email == email).first()
         if existing_user_email and existing_user_email.id != user_id:
@@ -46,15 +56,25 @@ def update_user(user_id):
         
         user.username = username
         user.email = email
+        user.phone = phone
+        user.address = address
+        
         session.commit()
         session.refresh(user)
-        return jsonify({'id': user.id, 'username': user.username, 'email': user.email}), 200
+        return jsonify({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'phone': user.phone,
+            'address': user.address
+        }), 200
     
     except Exception as e:
         return jsonify({'error': f"An error occurred: {str(e)}"}), 500
     
     finally:
         session.close()
+
 
 # Delete a user
 @users_routes.route('/users/<int:user_id>', methods=['DELETE'])

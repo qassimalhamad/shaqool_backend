@@ -11,8 +11,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-Base = declarative_base()
 
+class UserEnum(enum.Enum):
+    customer = 'customer'
+    provider = 'provider'
+    admin = 'admin'
+
+Base = declarative_base()
 class User(Base):
     __tablename__ = 'users'
 
@@ -20,7 +25,9 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-
+    phone = Column(String)
+    address = Column(String)
+    user_type = Column(Enum(UserEnum), default=UserEnum.customer)
 
 
 
