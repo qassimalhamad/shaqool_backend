@@ -1,7 +1,7 @@
 import os
 import enum
 
-from sqlalchemy import create_engine, ForeignKey, Column, String, Integer, Enum, Float, Text,DateTime, Boolean, func 
+from sqlalchemy import create_engine, ForeignKey, Column, String, Integer, Enum, Float, Text,TIMESTAMP, Boolean, func 
 
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -17,7 +17,17 @@ class UserEnum(enum.Enum):
     provider = 'provider'
     admin = 'admin'
 
+class ServiceEnum(enum.Enum):
+    plumbing = 'plumbing'
+    electrician = 'electrician'
+    handyman = 'handyman'
+    cleaning = 'cleaning'
+    painting = 'painting'
+    gardening = 'gardening'
+    welding = 'welding'
+
 Base = declarative_base()
+
 class User(Base):
     __tablename__ = 'users'
 
@@ -28,6 +38,35 @@ class User(Base):
     phone = Column(String)
     address = Column(String)
     user_type = Column(Enum(UserEnum), default=UserEnum.customer)
+
+    # Relationships
+    services = relationship('Service', back_populates='provider')
+    bookings = relationship('Booking', back_populates='customer')
+
+class Service(Base):
+    __tablename__ = 'services'
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(Enum(ServiceEnum), nullable=False)
+    description = Column(String)
+    provider_id = Column(Integer, ForeignKey('users.id'))
+
+    # Relationships
+    provider = relationship('User', back_populates='services')
+    bookings = relationship('Booking', back_populates='service')
+
+class Booking(Base):
+    __tablename__ = 'bookings'
+
+    id = Column(Integer, primary_key=True, index=True)
+    service_id = Column(Integer, ForeignKey('services.id'))
+    customer_id = Column(Integer, ForeignKey('users.id'))
+    booking_date = Column(TIMESTAMP, nullable=False)
+    status = Column(Enum('pending', 'confirmed', 'completed', 'canceled'), default='pending')
+
+    # Relationships
+    service = relationship('Service', back_populates='bookings')
+    customer = relationship('User', back_populates='bookings')
 
 
 
