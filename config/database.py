@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
+Base = declarative_base()
 class UserEnum(enum.Enum):
     customer = 'customer'
     provider = 'provider'
@@ -26,7 +26,17 @@ class ServiceEnum(enum.Enum):
     gardening = 'gardening'
     welding = 'welding'
 
-Base = declarative_base()
+class BookingEnum(enum.Enum):
+    pending = 'pending'
+    confirmed = 'confirmed'
+    completed = 'completed'
+    canceled = 'canceled'
+
+class CategoryEnum(enum.Enum):
+    home_repairs = 'home_repairs'
+    cleaning = 'cleaning'
+    gardening = 'gardening'
+
 
 class User(Base):
     __tablename__ = 'users'
@@ -45,21 +55,27 @@ class User(Base):
 
 class Service(Base):
     __tablename__ = 'services'
-
+    
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(Enum(ServiceEnum), nullable=False)
+    name = Column(String, nullable=False)
     description = Column(String)
-    provider_id = Column(Integer, ForeignKey('users.id'))
-
+    category_id = Column(Integer, ForeignKey('categories.id'))
+    
     # Relationships
+    category = relationship('Category', back_populates='services')
+    provider_id = Column(Integer, ForeignKey('users.id')) 
     provider = relationship('User', back_populates='services')
-    bookings = relationship('Booking', back_populates='service')
+    
+class Category(Base):
+    __tablename__ = 'categories'
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    description = Column(String)
+    
+    # Relationships
+    services = relationship('Service', back_populates='category')
 
-class BookingEnum(enum.Enum):
-    pending = 'pending'
-    confirmed = 'confirmed'
-    completed = 'completed'
-    canceled = 'canceled'
 
 class Booking(Base):
     __tablename__ = 'bookings'
@@ -67,12 +83,14 @@ class Booking(Base):
     id = Column(Integer, primary_key=True, index=True)
     service_id = Column(Integer, ForeignKey('services.id'))
     customer_id = Column(Integer, ForeignKey('users.id'))
+    provider_id = Column(Integer, ForeignKey('users.id'))
     booking_date = Column(TIMESTAMP, nullable=False)
     status = Column(Enum(BookingEnum), default=BookingEnum.pending)
 
     # Relationships
     service = relationship('Service', back_populates='bookings')
     customer = relationship('User', back_populates='bookings')
+    provider = relationship('User', back_populates='bookings')
 
 
 
