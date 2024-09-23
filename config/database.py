@@ -51,7 +51,6 @@ class User(Base):
 
     # Relationships
     services = relationship('Service', back_populates='provider')
-    bookings = relationship('Booking', back_populates='customer')
 
 class Service(Base):
     __tablename__ = 'services'
@@ -60,10 +59,14 @@ class Service(Base):
     name = Column(String, nullable=False)
     description = Column(String)
     category_id = Column(Integer, ForeignKey('categories.id'))
+    price = Column(Float, nullable=False)
+
+    category_id = Column(Integer, ForeignKey('categories.id'))
+    provider_id = Column(Integer, ForeignKey('users.id'))
+
     
     # Relationships
     category = relationship('Category', back_populates='services')
-    provider_id = Column(Integer, ForeignKey('users.id')) 
     provider = relationship('User', back_populates='services')
     
 class Category(Base):
@@ -77,20 +80,7 @@ class Category(Base):
     services = relationship('Service', back_populates='category')
 
 
-class Booking(Base):
-    __tablename__ = 'bookings'
 
-    id = Column(Integer, primary_key=True, index=True)
-    service_id = Column(Integer, ForeignKey('services.id'))
-    customer_id = Column(Integer, ForeignKey('users.id'))
-    provider_id = Column(Integer, ForeignKey('users.id'))
-    booking_date = Column(TIMESTAMP, nullable=False)
-    status = Column(Enum(BookingEnum), default=BookingEnum.pending)
-
-    # Relationships
-    service = relationship('Service', back_populates='bookings')
-    customer = relationship('User', back_populates='bookings')
-    provider = relationship('User', back_populates='bookings')
 
 
 
