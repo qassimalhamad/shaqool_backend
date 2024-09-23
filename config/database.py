@@ -1,7 +1,7 @@
 import os
 import enum
 
-from sqlalchemy import create_engine, ForeignKey, Column, String, Integer, Enum, Float, Text,TIMESTAMP, Boolean, func 
+from sqlalchemy import create_engine, ForeignKey, Column, String, Integer, Enum, Float, Text,TIMESTAMP, Boolean, func , DateTime 
 
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -51,12 +51,13 @@ class User(Base):
 
     # Relationships
     services = relationship('Service', back_populates='provider')
+    bookings = relationship('Booking', back_populates='user')
 
 class Service(Base):
     __tablename__ = 'services'
     
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
+    service_type = Column(Enum(ServiceEnum), nullable=False) 
     description = Column(String)
     category_id = Column(Integer, ForeignKey('categories.id'))
     price = Column(Float, nullable=False)
@@ -68,18 +69,29 @@ class Service(Base):
     # Relationships
     category = relationship('Category', back_populates='services')
     provider = relationship('User', back_populates='services')
+    bookings = relationship('Booking', back_populates='service')
     
 class Category(Base):
     __tablename__ = 'categories'
     
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(Enum(CategoryEnum), unique=True, nullable=False)
     description = Column(String)
     
     # Relationships
     services = relationship('Service', back_populates='category')
 
+class Booking(Base):
+    __tablename__ = 'bookings'
 
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    service_id = Column(Integer, ForeignKey('services.id'))
+    booking_time = Column(DateTime)
+    status = Column(String, default=BookingEnum.pending.value)  # Default to Pending
+
+    user = relationship("User", back_populates="bookings")
+    service = relationship("Service", back_populates="bookings")
 
 
 

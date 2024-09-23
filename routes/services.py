@@ -1,68 +1,78 @@
 from flask import Blueprint, request, jsonify
-from config.database import Service , ServiceEnum , CategoryEnum , Category, SessionLocal
+from config.database import Service, ServiceEnum, CategoryEnum, Category, User, SessionLocal
 
 services_routes = Blueprint('services_routes', __name__)
 
-# Create a service
+# Create multiple services
 @services_routes.route('/services', methods=['POST'])
-def create_service():
+def create_services():
     session = SessionLocal()
     try:
-        service_data = request.get_json()
-        name = service_data.get('name')
-        description = service_data.get('description')
-        price = service_data.get('price')
+        services_data = request.get_json()  # Expecting a list of services
         provider_id = request.user.get('id')
 
-        if name not in [service.value for service in ServiceEnum]:
-            return jsonify({'error': 'Invalid service name.'}), 400
-        
-        if not all([name, price, description]):
-            return jsonify({'error': 'Incomplete data. All fields are required.'}), 400
-        
-        existing_service = session.query(Service).filter(Service.name == name, Service.provider_id == provider_id).first()
-        if existing_service:
-            return jsonify({'error': 'Service already exists.'}), 400
-        
-        category_name = None
-        if name in ['plumbing', 'electrician', 'handyman']:
-            category_name = CategoryEnum.home_repairs.value
-        elif name == 'cleaning':
-            category_name = CategoryEnum.cleaning.value
-        elif name in ['gardening', 'welding']:
-            category_name = CategoryEnum.gardening.value
-        else:
-            return jsonify({'error': 'No category found for this service.'}), 400
-        
-        category = session.query(Category).filter(Category.name == category_name).first()
-        if not category:
-            return jsonify({'error': 'Category not found.'}), 400
+        if not isinstance(services_data, list):
+            return jsonify({'error': 'Invalid input. Expected a list of services.'}), 400
 
-        new_service = Service(
-            name=name,
-            description=description,
-            price=price,
-            provider_id=provider_id,
-            category_id=category.id
-        )
+        created_services = []
+        for service_data in services_data:
+            service_type = service_data.get('service_type')
+            description = service_data.get('description')
+            price = service_data.get('price')
 
-        session.add(new_service)
+            if service_type not in [service.value for service in ServiceEnum]:
+                return jsonify({'error': f'Invalid service type: {service_type}.'}), 400
+
+            if not all([service_type, price, description]):
+                return jsonify({'error': 'Incomplete data. All fields are required for each service.'}), 400
+            
+            existing_service = session.query(Service).filter(Service.service_type == ServiceEnum[service_type], Service.provider_id == provider_id).first()
+            if existing_service:
+                return jsonify({'error': f'Service already exists for this provider: {service_type}.'}), 400
+            
+            # Determine category based on service type
+            if service_type in [ServiceEnum.plumbing.value, ServiceEnum.electrician.value, ServiceEnum.handyman.value]:
+                category_name = CategoryEnum.home_repairs.value
+            elif service_type == ServiceEnum.cleaning.value:
+                category_name = CategoryEnum.cleaning.value
+            elif service_type in [ServiceEnum.gardening.value, ServiceEnum.welding.value]:
+                category_name = CategoryEnum.gardening.value
+            else:
+                return jsonify({'error': 'No category found for this service.'}), 400
+            
+            category = session.query(Category).filter(Category.name == category_name).first()
+            if not category:
+                return jsonify({'error': 'Category not found.'}), 400
+
+            new_service = Service(
+                service_type=ServiceEnum[service_type],
+                description=description,
+                price=price,
+                provider_id=provider_id,
+                category_id=category.id
+            )
+
+            session.add(new_service)
+            created_services.append(new_service)
+
         session.commit()
-        session.refresh(new_service)
+        for service in created_services:
+            session.refresh(service)
 
-        return jsonify({
-            'id': new_service.id,
-            'name': new_service.name,
-            'description': new_service.description,
-            'price': new_service.price,
-            'provider_id': new_service.provider_id,
-            'category_id': new_service.category_id
-        }), 201
-    
+        return jsonify([{
+            'id': service.id,
+            'service_type': service.service_type.value,
+            'description': service.description,
+            'price': service.price,
+            'provider_id': service.provider_id,
+            'category_id': service.category_id
+        } for service in created_services]), 201
+
     except Exception as e:
         return jsonify({'error': f"An error occurred: {str(e)}"}), 500
     finally:
         session.close()
+
 
 # Update a service
 @services_routes.route('/services/<int:service_id>', methods=['PUT'])
@@ -70,12 +80,12 @@ def update_service(service_id):
     session = SessionLocal()
     try:
         service_data = request.get_json()
-        name = service_data.get('name')
+        service_type = service_data.get('service_type')  # Changed from 'name' to 'service_type'
         description = service_data.get('description')
         price = service_data.get('price')
         provider_id = request.user.get('id')
 
-        if not all([name, price, description]):
+        if not all([service_type, price, description]):
             return jsonify({'error': 'Incomplete data. All fields are required.'}), 400
 
         existing_service = session.query(Service).filter(Service.id == service_id).first()
@@ -87,23 +97,23 @@ def update_service(service_id):
             return jsonify({'error': 'You do not have permission to update this service.'}), 403
 
         duplicate_service = session.query(Service).filter(
-            Service.name == name,
+            Service.service_type == ServiceEnum[service_type], 
             Service.provider_id == provider_id
         ).first()
 
         if duplicate_service and duplicate_service.id != service_id:
-            return jsonify({'error': 'Service already exists.'}), 400
+            return jsonify({'error': 'Service already exists for this provider.'}), 400
 
-        existing_service.name = name
+        existing_service.service_type = ServiceEnum[service_type]  
         existing_service.description = description
         existing_service.price = price
         
-        category_name = None
-        if name in ['plumbing', 'electrician', 'handyman']:
+        # Determine category based on service type
+        if service_type in [ServiceEnum.plumbing.value, ServiceEnum.electrician.value, ServiceEnum.handyman.value]:
             category_name = CategoryEnum.home_repairs.value
-        elif name == 'cleaning':
+        elif service_type == ServiceEnum.cleaning.value:
             category_name = CategoryEnum.cleaning.value
-        elif name in ['gardening', 'welding']:
+        elif service_type in [ServiceEnum.gardening.value, ServiceEnum.welding.value]:
             category_name = CategoryEnum.gardening.value
         else:
             return jsonify({'error': 'No category found for this service.'}), 400
@@ -119,7 +129,7 @@ def update_service(service_id):
 
         return jsonify({
             'id': existing_service.id,
-            'name': existing_service.name,
+            'service_type': existing_service.service_type.value,  
             'description': existing_service.description,
             'price': existing_service.price,
             'provider_id': existing_service.provider_id,
@@ -164,7 +174,7 @@ def get_all_services():
         
         services_list = [{
             'id': service.id,
-            'name': service.name,
+            'service_type': service.service_type.value,  
             'description': service.description,
             'price': service.price,
             'provider_id': service.provider_id,
@@ -178,26 +188,55 @@ def get_all_services():
     finally:
         session.close()
 
-# Get a service by ID
-@services_routes.route('/services/<int:service_id>', methods=['GET'])
-def get_service_by_id(service_id):
+# Get service by service type
+@services_routes.route('/services/<string:service_type>', methods=['GET'])
+def get_service_by_type(service_type):
     session = SessionLocal()
     try:
-        service = session.query(Service).filter(Service.id == service_id).first()
+        if service_type not in [service.value for service in ServiceEnum]:
+            return jsonify({'error': 'Invalid service type.'}), 400
+
+        service = session.query(Service).filter(Service.service_type == ServiceEnum[service_type]).first()
 
         if not service:
             return jsonify({'error': 'Service not found.'}), 404
 
-        service_data = {
+        return jsonify({
             'id': service.id,
-            'name': service.name,
+            'service_type': service.service_type.value,  
             'description': service.description,
             'price': service.price,
             'provider_id': service.provider_id,
             'category_id': service.category_id
-        }
+        }), 200
 
-        return jsonify(service_data), 200
+    except Exception as e:
+        return jsonify({'error': f"An error occurred: {str(e)}"}), 500
+    finally:
+        session.close()
+
+# Get providers by service type
+@services_routes.route('/services/<string:service_type>/providers', methods=['GET'])
+def get_providers_for_service(service_type):
+    session = SessionLocal()
+    try:
+        if service_type not in [service.value for service in ServiceEnum]:
+            return jsonify({'error': 'Invalid service type.'}), 400
+
+        services = session.query(Service).filter(Service.service_type == ServiceEnum[service_type]).all()
+        if not services:
+            return jsonify({'error': 'No services found for this type.'}), 404
+
+        provider_ids = [service.provider_id for service in services]
+        providers = session.query(User).filter(User.id.in_(provider_ids)).all()
+        
+        providers_list = [{
+            'id': provider.id,
+            'name': provider.username,  
+            'contact': provider.phone, 
+        } for provider in providers]
+
+        return jsonify(providers_list), 200
 
     except Exception as e:
         return jsonify({'error': f"An error occurred: {str(e)}"}), 500
