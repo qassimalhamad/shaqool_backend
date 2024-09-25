@@ -17,7 +17,7 @@ def get_user(user_id):
                 'email': user.email,
                 'phone': user.phone,
                 'address': user.address,
-                'user_type': user.user_type
+                'user_type': user.user_type.value
             }), 200
         return jsonify({'error': 'User not found'}), 404
     
@@ -66,7 +66,8 @@ def update_user(user_id):
             'username': user.username,
             'email': user.email,
             'phone': user.phone,
-            'address': user.address
+            'address': user.address,
+            'user_type': user.user_type.value  
         }), 200
     
     except Exception as e:
@@ -74,7 +75,6 @@ def update_user(user_id):
     
     finally:
         session.close()
-
 
 # Delete a user
 @users_routes.route('/users/<int:user_id>', methods=['DELETE'])

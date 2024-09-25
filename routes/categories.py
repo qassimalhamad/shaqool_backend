@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from config.database import Service, ServiceEnum, CategoryEnum, Category, SessionLocal
+from config.database import Category, CategoryEnum, SessionLocal
 
 categories_routes = Blueprint('categories_routes', __name__)
 
@@ -13,59 +13,29 @@ def get_categories():
         for category in categories:
             categories_list.append({
                 'id': category.id,
-                'name': category.name.value if isinstance(category.name, CategoryEnum) else str(category.name)
+                'name': category.name.value,
+                'description': category.description
             })
         return jsonify(categories_list), 200
-    
     except Exception as e:
         return jsonify({'error': f"An error occurred: {str(e)}"}), 500
-    
     finally:
         session.close()
 
-# Get category by name
+# Get a single category by name
 @categories_routes.route('/categories/<string:category_name>', methods=['GET'])
-def get_category_by_name(category_name):
+def get_category(category_name):
     session = SessionLocal()
     try:
-        category = session.query(Category).filter(Category.name == category_name).first()
-        if not category:
-            return jsonify({'error': 'Category not found.'}), 404
-        
-        category_data = {
-            'id': category.id,
-            'name': category.name.value if isinstance(category.name, CategoryEnum) else str(category.name)
-        }
-        return jsonify(category_data), 200
-    
+        category = session.query(Category).filter(Category.name == CategoryEnum[category_name]).first()
+        if category:
+            return jsonify({
+                'id': category.id,
+                'name': category.name.value,
+                'description': category.description
+            }), 200
+        return jsonify({'error': 'Category not found'}), 404
     except Exception as e:
         return jsonify({'error': f"An error occurred: {str(e)}"}), 500
-    
-    finally:
-        session.close()
-
-# Get services by category
-@categories_routes.route('/categories/<string:category_name>/services', methods=['GET'])
-def get_services_by_category_name(category_name):
-    session = SessionLocal()
-    try:
-        category = session.query(Category).filter(Category.name == category_name).first()
-        if not category:
-            return jsonify({'error': 'Category not found.'}), 404
-        
-        services = session.query(Service).filter(Service.category_id == category.id).all()
-        services_list = []
-        
-        for service in services:
-            services_list.append({
-                'id': service.id,
-                'service_type': service.service_type.value if isinstance(service.service_type, ServiceEnum) else str(service.service_type),
-            })
-        
-        return jsonify(services_list), 200
-
-    except Exception as e:
-        return jsonify({'error': f"An error occurred: {str(e)}"}), 500
-    
     finally:
         session.close()
