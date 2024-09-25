@@ -41,8 +41,6 @@ def get_services_by_category(category_name):
                 'description': service.description
             })
         return jsonify(services_list), 200
-    except KeyError:
-        return jsonify({'error': 'Invalid category name'}), 400
     except Exception as e:
         return jsonify({'error': f"An error occurred: {str(e)}"}), 500
     finally:
@@ -62,8 +60,7 @@ def get_service_by_name(service_name):
                 'category_id': service.category_id
             }), 200
         return jsonify({'error': 'Service not found'}), 404
-    except KeyError:
-        return jsonify({'error': 'Invalid service name'}), 400
+    
     except Exception as e:
         return jsonify({'error': f"An error occurred: {str(e)}"}), 500
     finally:
@@ -89,8 +86,7 @@ def get_providers_by_service(service_name):
                 'username': session.query(User).filter(User.id == provider.provider_id).first().username
             })
         return jsonify(providers_list), 200
-    except KeyError:
-        return jsonify({'error': 'Invalid service name'}), 400
+    
     except Exception as e:
         return jsonify({'error': f"An error occurred: {str(e)}"}), 500
     finally:
