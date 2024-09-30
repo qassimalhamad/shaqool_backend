@@ -2,7 +2,7 @@ import os
 from flask import Blueprint, request, jsonify
 import bcrypt
 import jwt
-from config.database import User, SessionLocal, UserEnum
+from config.database import User, SessionLocal, UserRole
 
 auth_routes = Blueprint('auth_routes', __name__)
 
@@ -18,10 +18,8 @@ def signup():
         password = new_user_data.get('password')
         confirm_password = new_user_data.get('confirm_password')
         phone = new_user_data.get('phone')
-        address = new_user_data.get('address')
-        user_type = new_user_data.get('user_type', 'customer')  
 
-        if not all([username, email, password, confirm_password, phone, address]):
+        if not all([username, email, password, confirm_password, phone]):
             return jsonify({'error': 'Incomplete data. All fields are required.'}), 400
         
         if password != confirm_password:
@@ -37,15 +35,11 @@ def signup():
         
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-        user_type_enum = UserEnum[user_type]
-
         new_user = User(
             username=username,
             email=email,
-            hashed_password=hashed_password.decode('utf-8'),
+            password=hashed_password.decode('utf-8'),
             phone=phone,
-            address=address,
-            user_type=user_type_enum
         )
 
         session.add(new_user)
@@ -57,8 +51,7 @@ def signup():
             'username': new_user.username,
             'email': new_user.email,
             'phone': new_user.phone,
-            'address': new_user.address,
-            'user_type': new_user.user_type.value  
+            'role': new_user.role.value  
         }
 
         token = jwt.encode(token_payload, JWT_SECRET, algorithm='HS256')
@@ -83,14 +76,13 @@ def signin():
 
         user = session.query(User).filter_by(email=email).first()
 
-        if user and bcrypt.checkpw(password.encode('utf-8'), user.hashed_password.encode('utf-8')):
+        if user and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')): 
             token_payload = {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'phone': user.phone,
-                'address': user.address,
-                'user_type': user.user_type.value 
+                'id': user.id,                  
+                'username': user.username,      
+                'email': user.email,           
+                'phone': user.phone,           
+                'role': user.role.value         
             }
 
             token = jwt.encode(token_payload, JWT_SECRET, algorithm='HS256')
